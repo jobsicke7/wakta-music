@@ -46,6 +46,7 @@ bot = commands.Bot(command_prefix="!", intents=intents, activity=activity, statu
 async def on_ready():
     print(f'Logged in as {bot.user}')
     await bot.tree.sync()
+    #player_data.delete_many({})
     queue_collection.delete_many({})
 
 @bot.event
@@ -79,6 +80,8 @@ class AnnouncementModal(Modal):
         self.add_item(self.content_input)
 
     async def on_submit(self, interaction: discord.Interaction):
+        
+        
         for notice in notices:
             guild_id = notice.get('guild_id')
             channel_id = notice.get('channel_id')
@@ -107,12 +110,14 @@ class AnnouncementView(View):
         await self.message.delete()
         await interaction.response.send_message("취소되었습니다.", ephemeral=True)
 
+
+#[버튼]
 class ButtonTypesView(discord.ui.View):
     def __init__(self, guild_id):
         super().__init__(timeout=None)
         self.guild_id = guild_id
         if guild_id not in repeat_modes:
-            repeat_modes[guild_id] = 0
+            repeat_modes[guild_id] = 0 
         if guild_id not in pause_states:
             pause_states[guild_id] = False
 
@@ -120,25 +125,25 @@ class ButtonTypesView(discord.ui.View):
 
     def update_button_color(self):
         mode = repeat_modes[self.guild_id]
-        if mode == 0:
+        if mode == 0: # "반복 안함"
             self.repbt.style = discord.ButtonStyle.secondary
-        elif mode == 1:
+        elif mode == 1: # "한 곡 반복"
             self.repbt.style = discord.ButtonStyle.blurple
-        elif mode == 2:
+        elif mode == 2: # "전체 반복"
             self.repbt.style = discord.ButtonStyle.green
-        elif mode == 3:
+        elif mode == 3: # "셔플"
             self.repbt.style = discord.ButtonStyle.red
-        elif mode == 4:
+        elif mode == 4: # "사용자 지정"
             self.repbt.style = discord.ButtonStyle.red
-        elif mode == 5:
+        elif mode == 5: # "사용자 지정"
             self.repbt.style = discord.ButtonStyle.red
-
     def upd(self):
         pause = pause_states.get(self.guild_id, False)
         if pause:
             self.pausebt.emoji = "<:play:1260790356027637862>"
         else:
             self.pausebt.emoji = "<:pause:1260788624249851944>"
+            
 
     @discord.ui.button(style=discord.ButtonStyle.danger, emoji="<:stop:1260788414840700959>")
     async def stopbt(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -165,11 +170,11 @@ class ButtonTypesView(discord.ui.View):
         else:
             await voice_client.disconnect()
 
-    @discord.ui.button(style=discord.ButtonStyle.success, emoji="<:pr:1260788471220535316>")
+    @discord.ui.button( style=discord.ButtonStyle.success, emoji="<:pr:1260788471220535316>")
     async def prbt(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:pause:1260788624249851944>")
+    @discord.ui.button( style=discord.ButtonStyle.secondary, emoji="<:pause:1260788624249851944>")
     async def pausebt(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         guild_id = interaction.guild.id       
@@ -222,7 +227,8 @@ class ButtonTypesView(discord.ui.View):
 
         self.update_button_color()
         await interaction.response.edit_message(view=self)
-
+        
+        
     @discord.ui.button(style=discord.ButtonStyle.secondary, emoji="<:list:1260792716489658502>")
     async def listbt(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild_id = interaction.guild.id
@@ -256,7 +262,9 @@ class ButtonTypesView(discord.ui.View):
             return embed
 
         embed = create_embed(page)
+
         message = await interaction.followup.send(embed=embed)
+
         await message.add_reaction("⬅️")
         await message.add_reaction("➡️")
         await message.add_reaction("❌")
@@ -282,7 +290,6 @@ class ButtonTypesView(discord.ui.View):
                 else:
                     await reaction.remove(user)
                     continue
-
                 embed = create_embed(page)
                 await message.edit(embed=embed)
                 await reaction.remove(user)
@@ -291,6 +298,8 @@ class ButtonTypesView(discord.ui.View):
                 await interaction.followup.send(f"문제가 발생했습니다: {str(e)}", ephemeral=True)
                 break
 
+#[함수]
+
 def randv(name):
     collection = db[name]
     documents = list(collection.find())
@@ -298,6 +307,7 @@ def randv(name):
         return None
     random_document = random.choice(documents)
     return random_document.get('url')
+
 
 def plrd(playlist_url):
     playlist_id_match = re.search(r"list=([\w-]+)", playlist_url)
@@ -325,12 +335,12 @@ def plrd(playlist_url):
 
     if not video_ids:
         raise ValueError("The playlist is empty or invalid")
-
     random_video_id = random.choice(video_ids)
     video_url = f"https://www.youtube.com/watch?v={random_video_id}"
     return video_url
         
 def format_duration(duration: int) -> str:
+    """Convert seconds to HH:MM:SS format."""
     hours = duration // 3600
     minutes = (duration % 3600) // 60
     seconds = duration % 60
@@ -367,7 +377,7 @@ async def editplayer(interaction,info):
     uploader = info.get("uploader", "Unknown Uploader")
     thumbnail_url = info.get('thumbnail', None)
     if guild.id not in repeat_modes:
-        repeat_modes[guild.id] = 0
+        repeat_modes[guild.id] = 0 
     mode = repeat_modes[guild.id]
     mode_text = REPEAT_MODES[mode]
     queue = list(queue_collection.find({"guild_id": guild.id}))
@@ -415,8 +425,8 @@ async def editplayer(interaction,info):
             {'guild_id': interaction.guild.id},
             {'$set': {'message_id': message.id}}
         )
-
 async def play_next_song(interaction: discord.Interaction):
+    
     next_song = queue_collection.find_one({'guild_id': interaction.guild.id})
     mode = repeat_modes[interaction.guild.id]
     nowplay = playing.find_one({'guild_id': interaction.guild.id})
@@ -464,7 +474,6 @@ async def play_next_song(interaction: discord.Interaction):
         else:
             url1 = randv('gom')
             await play_music(interaction, url1)
-
 async def chek(link):
     parsed_url = urlparse(link)
     query_params = parse_qs(parsed_url.query)
@@ -483,14 +492,11 @@ async def play_music(interaction_or_context, url: str):
         voice_channel = user.voice.channel if user.voice else None
     else:
         raise TypeError("interaction_or_context는 Interaction 또는 Context여야 합니다.")
-
     if not voice_channel:
         return "음성 채널에 접속해주세요."
-
     voice_client = guild.voice_client
     if not voice_client:
         voice_client = await voice_channel.connect()
-
     chk = await chek(url)
     if chk:
         if voice_client is not None and voice_client.is_playing():
@@ -628,6 +634,7 @@ async def play_music(interaction_or_context, url: str):
         info1 = info1['info']
         await editplayer(interaction_or_context,info1)
         return info['title']
+    
 
     ydl_opts = {
         "format": "bestaudio/best",
@@ -671,7 +678,7 @@ async def play_music(interaction_or_context, url: str):
     playing.update_one(
         {"guild_id": guild.id},
         {"$set": playing1},
-        upsert=True
+        upsert=True 
     )
     await editplayer(interaction_or_context, info)
     return title
@@ -708,6 +715,7 @@ async def skip(interaction: discord.Interaction):
         voice_client.stop()
     else:
         await interaction.response.send_message("재생 중인 곡이 없습니다.")
+
 
 @bot.tree.command(name='일시정지', description='현재 음악을 일시정지하거나 다시 재생합니다.')
 async def pause_or_resume(interaction: discord.Interaction):
@@ -768,6 +776,7 @@ async def play(interaction: discord.Interaction, query: str):
     embed1 = discord.Embed(title="🔎검색 완료", description=f'**{title}** 곡을 지금 재생할게요!', color=discord.Color.green())
     await interaction.edit_original_response(embed=embed1)
 
+
 @bot.tree.command(name="대기열", description="현재 대기열을 확인합니다.")
 async def show_queue(interaction: discord.Interaction):
     guild_id = interaction.guild.id
@@ -801,7 +810,9 @@ async def show_queue(interaction: discord.Interaction):
         return embed
 
     embed = create_embed(page)
+
     message = await interaction.followup.send(embed=embed)
+
     await message.add_reaction("⬅️")
     await message.add_reaction("➡️")
     await message.add_reaction("❌")
@@ -835,14 +846,17 @@ async def show_queue(interaction: discord.Interaction):
         except Exception as e:
             await interaction.followup.send(f"문제가 발생했습니다: {str(e)}", ephemeral=True)
             break
-
 @bot.tree.command(name='셔플', description='대기열을 셔플합니다')
 async def shufle(interaction: discord.Interaction):
     guild_id = interaction.guild.id
+
     queue = list(queue_collection.find({"guild_id": guild_id}))
+
     if not queue:
         return
+
     random.shuffle(queue)
+
     queue_collection.delete_many({"guild_id": guild_id})
     queue_collection.insert_many(queue)
 
@@ -913,4 +927,4 @@ async def clean(interaction: discord.Interaction, user: discord.User = None, cou
     else:
         await interaction.response.send_message("삭제할 메시지가 없습니다.", ephemeral=True)
 
-bot.run("TOKEN")
+bot.run("token")
